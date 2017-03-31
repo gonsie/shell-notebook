@@ -1,0 +1,49 @@
+#!/bin/bash
+
+export HISTCONTROL=ignoredups
+export -n HISTFILESIZE
+export -n HISTSIZE
+
+
+# Performs per-directory history records.
+function dirhist {
+  if [ "$*" == 'off' ]
+  then
+    prompt_command_delete __dirhist_prompt
+    export HISTFILE=~/.bash_history
+  else
+    prompt_command_add __dirhist_prompt
+  fi
+}
+
+export __CURRENT_HISTORY_DIR="$HOME"
+export HISTFILE="$__CURRENT_HISTORY_DIR/.bash_history"
+function __dirhist_prompt {
+  history -a "$HISTFILE"
+  new_history_dir=`pwd`
+  #debian_root=.; 
+  #while [ ! -d "$debian_root/debian" -a "`readlink \"$debian_root\"`" != / ]; do 
+ #     debian_root="$debian_root/.."; 
+  #done
+  #if [ "$debian_root" != / ];
+  #then
+  #    new_history_dir=`readlink $debian_root/..`
+  #else
+  #    new_history_dir=`pwd`
+  #fi
+
+  if [ "$new_history_dir" != "$__CURRENT_HISTORY_DIR" ]
+  then
+    history -c 
+    export __CURRENT_HISTORY_DIR="`pwd`"
+    export HISTFILE="$__CURRENT_HISTORY_DIR/.bash_history"
+    if [ ! -f "$HISTFILE" -o ! -w "$HISTFILE" ]
+    then
+      if ! (echo "start_new_history" 2> /dev/null >> "$HISTFILE" )
+      then
+        export HISTFILE="$HOME/.bash_history"
+      fi
+    fi 
+    history -r
+  fi
+}

@@ -1,0 +1,149 @@
+#!/bin/bash
+
+if [ `id -u` -eq 0 ]; then p='#'; else p='$'; fi 
+
+export GIT_PS1_SHOWDIRTYSTATE=1
+export GIT_PS1_SHOWUPSTREAM="auto"
+
+function prompt_command_add
+{
+  prompt_command_delete $1
+  if [ -z "$PROMPT_COMMAND" ]
+  then
+    export PROMPT_COMMAND="$1"
+  else
+    export PROMPT_COMMAND="$PROMPT_COMMAND;$1"
+  fi
+}
+
+function prompt_command_delete
+{
+ export PROMPT_COMMAND=`echo -n $PROMPT_COMMAND | awk -v 'RS=;' -v 'ORS=;' '$0 != "'$1'"' | sed 's/;$//g'`;
+}
+
+function benprompt
+{
+  if [ "$*" == 'off' ]
+  then
+    prompt_command_delete "__benprompt_command"
+  else
+    __unload_current_prompt
+    export __current_prompt="benprompt"
+    export PS1='$? \$ '
+    __standard_ps2
+    export COLUMNS
+    prompt_command_add "__benprompt_command"
+  fi
+}
+
+function myprompt
+{
+  if [ "$*" != 'off' ]
+  then
+    __unload_current_prompt
+    export __current_prompt="myprompt"
+    export PS1="\[$__green\]\u@\h\[$__off\]\$(__my_git_prompt ' (')\[$__red\]\$(__my_git_prompt '%s')\[$__off\]\$(__my_git_prompt ')') \[$__blue$__bold\]\W \\\$\[$__off\] "
+    __standard_ps2
+  fi
+}
+
+function __unload_current_prompt
+{
+  if [ -n "$__current_prompt" ]
+  then
+    $__current_prompt 'off'
+    export __current_prompt=
+  fi
+}
+
+function __reload_current_prompt
+{
+  if [ -n "$__current_prompt" ]
+  then
+    $__current_prompt
+  fi
+}
+
+function color
+{
+  if [ "$*" == 'off' ]
+  then
+    export __green=
+    export __red=
+    export __blue=
+    export __bold=
+    export __underline=
+    export __off=
+  else
+    export __green="\033[01;32m"
+    export __red="\033[01;31m"
+    export __blue="\033[01;34m"
+    export __bold="\033[1m"
+    export __underline="\033[4m"
+    export __off="\033[m"
+  fi
+  __reload_current_prompt
+}
+
+function title
+{
+  if [ "$*" == 'off' ]
+  then
+    prompt_command_delete "__terminal_title"
+  else
+    prompt_command_add "__terminal_title"
+  fi
+}
+
+function _e  {
+  return "\\[$*\\]"
+}
+
+function __my_git_prompt 
+{
+  if ( type -t __git_ps1 > /dev/null 2>&1 )
+  then
+    __git_ps1 "$1"
+  fi
+}
+
+function __standard_ps2
+{
+  export PS2='     '
+}
+
+function __terminal_title
+{
+  echo -ne "\033]0;${USER}@${HOSTNAME%%.*}:${PWD/#$HOME/~}"; echo -ne "\007"
+}
+
+function __benprompt_command
+{
+    date=`date +%X`
+    host=`hostname`
+    location="$USER@$host"
+    prompt0=""
+    prompt1=":"
+    dir="${PWD/#$HOME/~}"
+    prompt2=" "
+    prompt3="- $date"
+    promptgit=`__my_git_prompt " (%s)"`
+    candidate="$prompt0$location$prompt1$dir$promptgit$prompt2$prompt3"
+
+    if [ ${#candidate} -gt $COLUMNS ]
+    then
+        dir="..${dir:$((${#candidate} - $COLUMNS + 2))}"
+    elif [ ${#candidate} -lt $COLUMNS ]
+    then
+        k=$(($COLUMNS - ${#candidate}))
+        while [ "0$k" -gt 0 ]
+        do
+           prompt2="$prompt2-"
+           k=$(($k - 1))
+        done
+    fi
+    promptgit=`__my_git_prompt " ($__red%s$__off)"`
+    echo -e "$prompt0$__green$location$__off$prompt1$__blue$__bold$dir$__off$promptgit$prompt2$prompt3"
+}
+
+
